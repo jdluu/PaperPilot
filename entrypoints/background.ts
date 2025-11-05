@@ -6,18 +6,21 @@ import { getPreferences } from '../shared/preferences';
 export default defineBackground(() => {
 	console.log('PaperPilot background ready', { id: browser.runtime.id });
 
-	// Context menus
-	browser.contextMenus.removeAll().catch(() => {});
-	browser.contextMenus.create({
-		id: 'paperpilot-define',
-		title: 'PaperPilot: Define “%s”',
-		contexts: ['selection'],
-	});
-	browser.contextMenus.create({
-		id: 'paperpilot-arxiv',
-		title: 'PaperPilot: Search arXiv for “%s”',
-		contexts: ['selection'],
-	});
+	function setupContextMenus() {
+		browser.contextMenus.removeAll().catch(() => {});
+		browser.contextMenus.create({
+			id: 'paperpilot-define',
+			title: 'PaperPilot: Define “%s”',
+			contexts: ['selection'],
+		});
+		browser.contextMenus.create({
+			id: 'paperpilot-arxiv',
+			title: 'PaperPilot: Search arXiv for “%s”',
+			contexts: ['selection'],
+		});
+	}
+
+	setupContextMenus();
 
 	browser.contextMenus.onClicked.addListener(async (info, tab) => {
 		if (!info.selectionText) return;
