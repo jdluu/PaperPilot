@@ -1,9 +1,11 @@
 import { createRoot } from 'react-dom/client';
 import '@/assets/overlay.css';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { sendMessage } from '../shared/messaging';
 import type { DictionaryEntry } from '../shared/types';
 import { getPreferences } from '../shared/preferences';
+import { useDebouncedSelection } from './content/hooks/useDebouncedSelection';
+import { Overlay as OverlayView } from './content/components/Overlay';
 
 function Overlay() {
 	const [selectedText, setSelectedText] = useState<string | null>(null);
@@ -13,7 +15,7 @@ function Overlay() {
 	const [enabled, setEnabled] = useState<boolean>(true);
 	const [maxDefinitions, setMaxDefinitions] = useState<number>(2);
 	const containerRef = useRef<HTMLDivElement | null>(null);
-  const debounceRef = useRef<number | null>(null);
+  const { text, pos } = useDebouncedSelection(enabled, 250);
 
 	useEffect(() => {
 		getPreferences().then((p) => {
@@ -23,22 +25,6 @@ function Overlay() {
 	}, []);
 
 	useEffect(() => {
-		function handleMouseUp(e: MouseEvent) {
-			if (!enabled) return;
-			const sel = window.getSelection()?.toString().trim();
-			if (debounceRef.current) window.clearTimeout(debounceRef.current);
-			debounceRef.current = window.setTimeout(() => {
-				if (sel && sel.split(/\s+/).length === 1 && sel.length <= 50) {
-					setSelectedText(sel);
-					setPosition({ x: e.clientX, y: e.clientY });
-				} else {
-					setSelectedText(null);
-					setDefinitions(null);
-					setError(null);
-				}
-			}, 250);
-		}
-		document.addEventListener('mouseup', handleMouseUp);
 		function onKey(e: KeyboardEvent) {
 			if (e.altKey && (e.key === 'o' || e.key === 'O')) {
 				setEnabled((v) => !v);
@@ -49,10 +35,20 @@ function Overlay() {
 		}
 		document.addEventListener('keydown', onKey);
 		return () => {
-			document.removeEventListener('mouseup', handleMouseUp);
 			document.removeEventListener('keydown', onKey);
 		};
 	}, []);
+
+	useEffect(() => {
+		if (text && pos) {
+			setSelectedText(text);
+			setPosition(pos);
+		} else {
+			setSelectedText(null);
+			setDefinitions(null);
+			setError(null);
+		}
+	}, [text, pos]);
 
 	useEffect(() => {
 		async function fetchDef(term: string) {
@@ -70,47 +66,7 @@ function Overlay() {
 
 	if (!enabled || !position || !selectedText) return null;
 
-	return (
-		<div
-			ref={containerRef}
-			style={{
-				position: 'fixed',
-				top: position.y + 12,
-				left: position.x + 12,
-				zIndex: 2147483647,
-				maxWidth: 360,
-				background: 'white',
-				border: '1px solid #e5e7eb',
-				borderRadius: 8,
-				boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-				padding: 12,
-				color: '#111827',
-				fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif',
-				fontSize: 14,
-			}}
-		>
-			<div style={{ fontWeight: 600, marginBottom: 6 }}>{selectedText}</div>
-			{error && <div style={{ color: '#b91c1c' }}>{error}</div>}
-			{!error && !definitions && <div>Loading…</div>}
-				{definitions && (
-				<div style={{ display: 'grid', gap: 8 }}>
-						{definitions[0]?.meanings?.slice(0, maxDefinitions).map((m) => (
-						<div key={m.partOfSpeech}>
-							<div style={{ fontStyle: 'italic', color: '#6b7280' }}>{m.partOfSpeech}</div>
-							<ul style={{ margin: 0, paddingLeft: 18 }}>
-								{m.definitions.slice(0, 2).map((d, i) => (
-									<li key={i}>
-										{d.definition}
-										{d.example && <div style={{ color: '#6b7280' }}>“{d.example}”</div>}
-									</li>
-								))}
-							</ul>
-						</div>
-					))}
-				</div>
-			)}
-		</div>
-	);
+	return <OverlayView term={selectedText} position={position} definitions={definitions} error={error} maxDefinitions={maxDefinitions} />;
 }
 
 export default defineContentScript({
