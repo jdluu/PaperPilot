@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      run-e2e:
+        description: "Run Selenium E2E tests"
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Type check
+        run: pnpm compile
+
+      - name: Unit tests
+        run: pnpm test --run
+
+  e2e:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run-e2e }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [ chrome, firefox ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Build extension (Chromium)
+        run: pnpm build
+
+      - name: Package Firefox
+        run: pnpm zip:firefox
+
+      - name: Run Selenium UI tests
+        env:
+          BROWSER: ${{ matrix.browser }}
+          EXT_PATH: .output/chrome-mv3
+          EXT_XPI: .output/firefox-mv2.zip
+        run: |
+          # Wrap with xvfb for headless display
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          xvfb-run -a pnpm test:ui
+
+
