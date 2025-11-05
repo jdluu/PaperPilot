@@ -6,6 +6,7 @@ export default defineBackground(() => {
 	console.log('PaperPilot background ready', { id: browser.runtime.id });
 
 	// Context menus
+	browser.contextMenus.removeAll().catch(() => {});
 	browser.contextMenus.create({
 		id: 'paperpilot-define',
 		title: 'PaperPilot: Define “%s”',

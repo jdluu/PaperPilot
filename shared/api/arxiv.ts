@@ -1,13 +1,20 @@
 import type { ArxivEntry } from '../../shared/types';
+const cache = new Map<string, { at: number; data: ArxivEntry[] }>();
 
 export async function searchArxiv(query: string): Promise<ArxivEntry[]> {
+	const key = query.trim().toLowerCase();
+	const now = Date.now();
+	const cached = cache.get(key);
+	if (cached && now - cached.at < 60_000) return cached.data;
 	const url = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(
-		query,
+		key,
 	)}&start=0&max_results=10`;
 	const res = await fetch(url, { headers: { Accept: 'application/atom+xml' } });
 	if (!res.ok) throw new Error(`arXiv error ${res.status}`);
 	const text = await res.text();
-	return parseArxivAtom(text);
+	const parsed = parseArxivAtom(text);
+	cache.set(key, { at: now, data: parsed });
+	return parsed;
 }
 
 export function parseArxivAtom(atom: string): ArxivEntry[] {

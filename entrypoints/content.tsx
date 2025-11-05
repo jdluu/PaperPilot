@@ -91,8 +91,11 @@ export default defineContentScript({
 	main() {
 		const host = document.createElement('div');
 		host.id = 'paperpilot-overlay-root';
+		const shadow = host.attachShadow?.({ mode: 'open' });
+		const container = document.createElement('div');
+		(shadow ?? host).appendChild(container);
 		document.documentElement.appendChild(host);
-		const root = createRoot(host);
+		const root = createRoot(container);
 		root.render(<Overlay />);
 	},
 });
