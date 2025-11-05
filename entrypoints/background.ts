@@ -1,6 +1,7 @@
 import type { BgRequest, BgResponse } from '../shared/types';
 import { lookupDefinition } from '../shared/api/dictionary';
 import { searchArxiv } from '../shared/api/arxiv';
+import { getPreferences } from '../shared/preferences';
 
 export default defineBackground(() => {
 	console.log('PaperPilot background ready', { id: browser.runtime.id });
@@ -45,7 +46,8 @@ export default defineBackground(() => {
 						return;
 					}
 					if (message.type === 'searchArxiv') {
-						const results = await searchArxiv(message.query);
+						const prefs = await getPreferences();
+						const results = await searchArxiv(message.query, prefs.arxivMaxResults);
 						resolve({ ok: true, type: 'searchArxiv', results });
 						return;
 					}

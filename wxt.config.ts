@@ -20,5 +20,9 @@ export default defineConfig({
     action: {
       default_title: 'PaperPilot',
     },
+    options_ui: {
+      page: 'options.html',
+      open_in_tab: true,
+    },
   },
 });

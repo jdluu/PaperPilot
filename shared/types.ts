@@ -15,6 +15,8 @@ export type ArxivEntry = {
 	summary: string;
 	authors: string[];
 	link: string;
+	published?: string;
+	categories?: string[];
 };
 
 export type BgRequest =

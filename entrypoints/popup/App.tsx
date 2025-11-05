@@ -36,6 +36,11 @@ function App() {
           {loading ? '...' : 'Search'}
         </button>
       </form>
+      <div style={{ marginTop: 6 }}>
+        <button type="button" onClick={() => browser.runtime.openOptionsPage?.()} style={{ padding: '6px 8px', borderRadius: 6 }}>
+          Options
+        </button>
+      </div>
       {error && <div style={{ color: '#b91c1c', marginTop: 8 }}>{error}</div>}
       <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
         {results.map((r) => (

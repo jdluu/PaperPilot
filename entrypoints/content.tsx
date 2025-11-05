@@ -3,28 +3,55 @@ import '@/assets/overlay.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { sendMessage } from '../shared/messaging';
 import type { DictionaryEntry } from '../shared/types';
+import { getPreferences } from '../shared/preferences';
 
 function Overlay() {
 	const [selectedText, setSelectedText] = useState<string | null>(null);
 	const [definitions, setDefinitions] = useState<DictionaryEntry[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+	const [enabled, setEnabled] = useState<boolean>(true);
+	const [maxDefinitions, setMaxDefinitions] = useState<number>(2);
 	const containerRef = useRef<HTMLDivElement | null>(null);
+  const debounceRef = useRef<number | null>(null);
+
+	useEffect(() => {
+		getPreferences().then((p) => {
+			setEnabled(!!p.enableOverlayByDefault);
+			setMaxDefinitions(p.maxDefinitions);
+		});
+	}, []);
 
 	useEffect(() => {
 		function handleMouseUp(e: MouseEvent) {
+			if (!enabled) return;
 			const sel = window.getSelection()?.toString().trim();
-			if (sel && sel.split(/\s+/).length === 1 && sel.length <= 50) {
-				setSelectedText(sel);
-				setPosition({ x: e.clientX, y: e.clientY });
-			} else {
+			if (debounceRef.current) window.clearTimeout(debounceRef.current);
+			debounceRef.current = window.setTimeout(() => {
+				if (sel && sel.split(/\s+/).length === 1 && sel.length <= 50) {
+					setSelectedText(sel);
+					setPosition({ x: e.clientX, y: e.clientY });
+				} else {
+					setSelectedText(null);
+					setDefinitions(null);
+					setError(null);
+				}
+			}, 250);
+		}
+		document.addEventListener('mouseup', handleMouseUp);
+		function onKey(e: KeyboardEvent) {
+			if (e.altKey && (e.key === 'o' || e.key === 'O')) {
+				setEnabled((v) => !v);
 				setSelectedText(null);
 				setDefinitions(null);
 				setError(null);
 			}
 		}
-		document.addEventListener('mouseup', handleMouseUp);
-		return () => document.removeEventListener('mouseup', handleMouseUp);
+		document.addEventListener('keydown', onKey);
+		return () => {
+			document.removeEventListener('mouseup', handleMouseUp);
+			document.removeEventListener('keydown', onKey);
+		};
 	}, []);
 
 	useEffect(() => {
@@ -41,7 +68,7 @@ function Overlay() {
 		if (selectedText) void fetchDef(selectedText);
 	}, [selectedText]);
 
-	if (!position || !selectedText) return null;
+	if (!enabled || !position || !selectedText) return null;
 
 	return (
 		<div
@@ -65,9 +92,9 @@ function Overlay() {
 			<div style={{ fontWeight: 600, marginBottom: 6 }}>{selectedText}</div>
 			{error && <div style={{ color: '#b91c1c' }}>{error}</div>}
 			{!error && !definitions && <div>Loading…</div>}
-			{definitions && (
+				{definitions && (
 				<div style={{ display: 'grid', gap: 8 }}>
-					{definitions[0]?.meanings?.slice(0, 2).map((m) => (
+						{definitions[0]?.meanings?.slice(0, maxDefinitions).map((m) => (
 						<div key={m.partOfSpeech}>
 							<div style={{ fontStyle: 'italic', color: '#6b7280' }}>{m.partOfSpeech}</div>
 							<ul style={{ margin: 0, paddingLeft: 18 }}>
