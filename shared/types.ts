@@ -5,7 +5,7 @@ export type DictionaryMeaning = {
 
 export type DictionaryEntry = {
 	word: string;
-	phoenetics?: { text?: string; audio?: string }[];
+	phonetics?: { text?: string; audio?: string }[];
 	meanings: DictionaryMeaning[];
 };
 
