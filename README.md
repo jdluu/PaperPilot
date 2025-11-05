@@ -1,6 +1,6 @@
 # PaperPilot
 
-Cross-browser web extension (Chrome, Firefox, Edge) built with WXT, React, TypeScript, and Bun to help read technical papers.
+Cross-browser web extension (Chrome, Firefox, Edge) built with WXT, React, TypeScript to help read technical papers.
 
 Features:
 
