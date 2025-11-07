@@ -6,6 +6,7 @@ import type { DictionaryEntry } from '../shared/types';
 import { getPreferences } from '../shared/preferences';
 import { useDebouncedSelection } from './content/hooks/useDebouncedSelection';
 import { Overlay as OverlayView } from './content/components/Overlay';
+import { FloatingButton } from './content/components/FloatingButton';
 
 function Overlay() {
 	const [selectedText, setSelectedText] = useState<string | null>(null);
@@ -68,9 +69,28 @@ function Overlay() {
 		if (selectedText) void fetchDef(selectedText);
 	}, [selectedText]);
 
-	if (!enabled || !position || !selectedText) return null;
+	// Listen for messages from background script (context menu)
+	useEffect(() => {
+		function handleMessage(message: any) {
+			if (message.type === 'showDefinition' && message.term && message.position) {
+				setSelectedText(message.term);
+				setPosition(message.position);
+			}
+		}
+		browser.runtime.onMessage.addListener(handleMessage);
+		return () => {
+			browser.runtime.onMessage.removeListener(handleMessage);
+		};
+	}, []);
 
-	return <OverlayView term={selectedText} position={position} definitions={definitions} error={error} maxDefinitions={maxDefinitions} />;
+	return (
+		<>
+			<FloatingButton />
+			{enabled && position && selectedText && (
+				<OverlayView term={selectedText} position={position} definitions={definitions} error={error} maxDefinitions={maxDefinitions} />
+			)}
+		</>
+	);
 }
 
 export default defineContentScript({
