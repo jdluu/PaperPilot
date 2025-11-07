@@ -18,26 +18,63 @@ export async function searchArxiv(query: string, maxResults = 10): Promise<Arxiv
 }
 
 export function parseArxivAtom(atom: string): ArxivEntry[] {
-	const parser = new DOMParser();
-	const doc = parser.parseFromString(atom, 'application/xml');
-	const entries = Array.from(doc.getElementsByTagName('entry'));
-	return entries.map((e) => {
-		const cats = Array.from(e.getElementsByTagName('category')).map((c) => c.getAttribute('term') || '').filter(Boolean) as string[];
-		return {
-			id: e.getElementsByTagName('id')[0]?.textContent ?? '',
-			title: (e.getElementsByTagName('title')[0]?.textContent ?? '').trim(),
-			summary: (e.getElementsByTagName('summary')[0]?.textContent ?? '').trim(),
-			authors: Array.from(e.getElementsByTagName('author')).map(
-				(a) => a.getElementsByTagName('name')[0]?.textContent ?? '',
-			),
-			link:
-				Array.from(e.getElementsByTagName('link')).find(
-					(l) => l.getAttribute('type') === 'text/html',
-				)?.getAttribute('href') ?? e.getElementsByTagName('id')[0]?.textContent ?? '',
-			published: e.getElementsByTagName('published')[0]?.textContent ?? undefined,
-			categories: cats,
-		};
-	});
+	// Parse XML without DOMParser (for service worker compatibility)
+	const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
+	const entries: ArxivEntry[] = [];
+	let match;
+
+	while ((match = entryRegex.exec(atom)) !== null) {
+		const entryXml = match[1];
+		
+		// Extract ID
+		const idMatch = entryXml.match(/<id>(.*?)<\/id>/);
+		const id = idMatch?.[1] ?? '';
+		
+		// Extract title
+		const titleMatch = entryXml.match(/<title[^>]*>(.*?)<\/title>/);
+		const title = (titleMatch?.[1] ?? '').trim();
+		
+		// Extract summary
+		const summaryMatch = entryXml.match(/<summary[^>]*>(.*?)<\/summary>/);
+		const summary = (summaryMatch?.[1] ?? '').trim();
+		
+		// Extract authors
+		const authorMatches = entryXml.matchAll(/<author>[\s\S]*?<name>(.*?)<\/name>[\s\S]*?<\/author>/g);
+		const authors = Array.from(authorMatches, m => m[1]).filter(Boolean);
+		
+		// Extract link (prefer text/html type)
+		// Try href first, then type
+		let linkMatches = entryXml.matchAll(/<link[^>]*href=["']([^"']+)["'][^>]*type=["']text\/html["'][^>]*\/?>/g);
+		let htmlLink = Array.from(linkMatches, m => m[1])[0];
+		// Try type first, then href (different attribute order)
+		if (!htmlLink) {
+			linkMatches = entryXml.matchAll(/<link[^>]*type=["']text\/html["'][^>]*href=["']([^"']+)["'][^>]*\/?>/g);
+			htmlLink = Array.from(linkMatches, m => m[1])[0];
+		}
+		const link = htmlLink || id.replace(/\/abs\//, '/pdf/').replace(/v\d+$/, '');
+		
+		// Extract published date
+		const publishedMatch = entryXml.match(/<published>(.*?)<\/published>/);
+		const published = publishedMatch?.[1];
+		
+		// Extract categories
+		const categoryMatches = entryXml.matchAll(/<category[^>]*term=["']([^"']+)["'][^>]*\/?>/g);
+		const categories = Array.from(categoryMatches, m => m[1]).filter(Boolean);
+		
+		if (id && title) {
+			entries.push({
+				id,
+				title,
+				summary,
+				authors,
+				link,
+				published,
+				categories,
+			});
+		}
+	}
+	
+	return entries;
 }
 
 
