@@ -55,6 +55,10 @@ function Overlay() {
 			setError(null);
 			setDefinitions(null);
 			const res = await sendMessage({ type: 'lookupDefinition', term });
+			if (!res) {
+				setError('Failed to communicate with background script');
+				return;
+			}
 			if (!res.ok) {
 				setError(res.error);
 				return;

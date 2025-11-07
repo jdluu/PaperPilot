@@ -15,7 +15,9 @@ function App() {
     setError(null);
     setResults([]);
     const res = await sendMessage({ type: 'searchArxiv', query: q.trim() });
-    if (!res.ok) {
+    if (!res) {
+      setError('Failed to communicate with background script');
+    } else if (!res.ok) {
       setError(res.error);
     } else if (res.type === 'searchArxiv') {
       setResults(res.results);
