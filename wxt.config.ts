@@ -2,9 +2,9 @@ import { defineConfig } from 'wxt';
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
+  manifestVersion: 3,
   modules: ['@wxt-dev/module-react'],
   manifest: {
-    manifest_version: 3,
     name: 'PaperPilot',
     description: 'Read technical papers with AI: quick dictionary lookups and arXiv search.',
     permissions: ['storage', 'contextMenus', 'activeTab'],
